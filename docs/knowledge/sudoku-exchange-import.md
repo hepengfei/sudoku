@@ -4,9 +4,10 @@
 - 上游仓库：https://github.com/grantm/sudoku-exchange-puzzle-bank
 - 上游提交：`d8c8ebaee0c08c412cfba96af1923dfa61c83317`
 - 导入日期：2026-07-26
-- 固定随机种子：`sudoku-book-v1-2026-07-26`
-- 导入规模：Easy、Medium、Hard、Diabolical 各 1000 题
-- 难度映射：Easy→简单、Medium→中等、Hard→困难、Diabolical→地狱
+- 选择规则版本：`sudoku-book-v2-givens-desc-2026-07-26`
+- 导入规模：入门、简单、中等、困难、地狱各 1000 题，共 5000 题
+- 难度映射：Easy 且给定数 ≥40→入门、其余 Easy→简单、Medium→中等、
+  Hard→困难、Diabolical→地狱
 - 许可证：公有领域，副本见
   [`docs/licenses/sudoku-exchange-puzzle-bank-LICENSE.txt`](../licenses/sudoku-exchange-puzzle-bank-LICENSE.txt)
 
@@ -24,21 +25,25 @@
 
 | 文件 | SHA-256 |
 | --- | --- |
-| `src/domain/puzzle-data.js` | `9a60db4d09d38efb74a72a9df5ab4b2b014d185f0e9386c95de420d57132a94a` |
-| `src/domain/puzzle-data/easy.js` | `171721b458e2ea6ceccee7674d554613e48d82b9acfc5cd408889d4bb830acbb` |
-| `src/domain/puzzle-data/medium.js` | `212e2efc02df6717ad503276479b70218879203bb83f55f754219924e183f2e1` |
-| `src/domain/puzzle-data/hard.js` | `422e0da4b4f2782068e833c6a837f5d0335da02c6850e2c055bd7f9f84de1d71` |
-| `src/domain/puzzle-data/diabolical.js` | `f3b3ac5540ed7bc275f96abe4cc5c4f33605e2cd68f28d88a20415cc237a2cc2` |
+| `src/domain/puzzle-data.js` | `77c7c0b5c73d59e50cb18efb6c290921be560f4b43e5ade4095aaf0efbf47b6f` |
+| `src/domain/puzzle-data/beginner.js` | `07c48b0d9edc65842fcd531cc0c4528d343e2101a03eff6368691cde1b516605` |
+| `src/domain/puzzle-data/easy.js` | `67ff957b862aa41baaf81ccd345036cee2b17c50cbf8cff822a931945d7fd8f8` |
+| `src/domain/puzzle-data/medium.js` | `d57fd6e215e0172ca643fb2eab91c805c2064a6a38d498873d9a51fbe654ee95` |
+| `src/domain/puzzle-data/hard.js` | `70373a8cfa6892df3e229ecaa4c0c337c9078a8cfa9f33b7adf57899b0ccf16e` |
+| `src/domain/puzzle-data/diabolical.js` | `f5d5b69e9f2647b30c4f9ea4defcaff6459efac3419a5b7fa5b945f65b9c3e1b` |
 
 ## 可重复导入
 
 ```sh
 node scripts/import-puzzles.mjs \
   /path/to/sudoku-exchange-puzzle-bank \
-  sudoku-book-v1-2026-07-26 \
+  sudoku-book-v2-givens-desc-2026-07-26 \
   d8c8ebaee0c08c412cfba96af1923dfa61c83317
 ```
 
-导入脚本使用固定种子分别进行无放回抽样，再使用本项目求解器逐题确认唯一解并生成
-完整答案。导入时还会拒绝重复哈希和重复题面。生成结果按难度拆分为四个静态模块，
-页面只在打开对应难度时加载该模块。
+`easy.txt` 中给定数不少于 40 的 2836 道题作为入门候选，其余 97164 道作为
+简单候选；其他难度使用各自完整源文件。每个候选池按给定数从多到少排序，给定数
+相同时按来源哈希升序排序，再取前 1000 道。入门、简单、中等、困难、地狱所选题目
+的给定数范围依次为 40–44、37、36–41、33–40、33–37。导入脚本使用本项目求解器
+逐题确认唯一解并生成完整答案，同时拒绝重复哈希和重复题面。生成结果按难度拆分为
+五个静态模块，页面只在打开对应难度时加载该模块。

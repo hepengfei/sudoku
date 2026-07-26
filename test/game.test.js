@@ -5,6 +5,7 @@ import {
   consumeInstructionDisplay,
   createGame,
   elapsedSeconds,
+  fillWithSolution,
   resetGame,
   restoreGame,
   submitGame,
@@ -89,6 +90,22 @@ test("清空单元格只清除当前格的填写或候选", async () => {
 
   const given = game.puzzle.findIndex(Boolean);
   assert.equal(clearCell(game, given), game);
+});
+
+test("开发者填入答案只更新棋盘并清除候选", async () => {
+  let game = await createGame("easy", null, fixedNow, fixedRandom);
+  const empty = game.puzzle.findIndex((value) => value === 0);
+  game = toggleNote(game, empty, 3);
+  game = { ...game, mistakes: 2, elapsedBeforeResume: 25 };
+
+  const filled = fillWithSolution(game);
+
+  assert.deepEqual(filled.board, game.solution);
+  assert.notEqual(filled.board, game.solution);
+  assert.ok(filled.notes.every((notes) => notes.length === 0));
+  assert.equal(filled.mistakes, 2);
+  assert.equal(filled.elapsedBeforeResume, 25);
+  assert.equal(filled.puzzleId, game.puzzleId);
 });
 
 test("每局只在前十次按键时显示操作说明", async () => {

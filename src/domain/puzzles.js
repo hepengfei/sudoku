@@ -4,6 +4,7 @@ import { loadPuzzleData, PUZZLE_SOURCE } from "./puzzle-data.js";
 export { PUZZLE_SOURCE };
 
 export const DIFFICULTY_LABELS = {
+  beginner: "入门",
   easy: "简单",
   medium: "中等",
   hard: "困难",

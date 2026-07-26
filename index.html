@@ -22,8 +22,18 @@
 
       <section class="directory-view" id="directory-view" aria-label="题库">
         <div class="difficulty-tabs" id="difficulty-tabs" role="tablist" aria-label="题目难度"></div>
-        <div class="directory-summary" id="directory-summary"></div>
-        <div class="puzzle-list" id="puzzle-list"></div>
+        <div class="directory-status" id="directory-summary"></div>
+        <div class="puzzle-table" id="puzzle-table" role="table" aria-label="题目清单">
+          <div class="puzzle-list-header" role="row">
+            <span role="columnheader">题号</span>
+            <span role="columnheader">状态</span>
+            <span role="columnheader">完成次数</span>
+            <span role="columnheader">最快用时</span>
+            <span role="columnheader">最快纪录时间</span>
+            <span role="columnheader">操作</span>
+          </div>
+          <div class="puzzle-list" id="puzzle-list" role="rowgroup"></div>
+        </div>
         <nav class="pagination" id="pagination" aria-label="题目分页"></nav>
       </section>
 

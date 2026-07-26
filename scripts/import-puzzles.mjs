@@ -3,31 +3,36 @@ import { resolve } from "node:path";
 import { parseBoard, serializeBoard, solveBoard } from "../src/domain/sudoku.js";
 
 const sourceDirectory = process.argv[2];
-const seed = process.argv[3] ?? "sudoku-book-v1";
+const selection = process.argv[3] ?? "sudoku-book-v2-givens-desc";
 const sourceRevision = process.argv[4] ?? "unknown";
 const sampleSize = 1000;
-const difficulties = ["easy", "medium", "hard", "diabolical"];
+const beginnerMinimumGivens = 40;
+const difficultyPlans = [
+  {
+    difficulty: "beginner",
+    source: "easy",
+    include: (record) => record.givens >= beginnerMinimumGivens,
+  },
+  {
+    difficulty: "easy",
+    source: "easy",
+    include: (record) => record.givens < beginnerMinimumGivens,
+  },
+  { difficulty: "medium", source: "medium", include: () => true },
+  { difficulty: "hard", source: "hard", include: () => true },
+  { difficulty: "diabolical", source: "diabolical", include: () => true },
+];
+const difficulties = difficultyPlans.map(({ difficulty }) => difficulty);
 
 if (!sourceDirectory) {
   console.error(
-    "用法：node scripts/import-puzzles.mjs <题库目录> [固定种子] [上游提交哈希]",
+    "用法：node scripts/import-puzzles.mjs <题库目录> [选择规则版本] [上游提交哈希]",
   );
   process.exit(1);
 }
 
-function createRandom(seedText) {
-  let state = 2166136261;
-  for (const character of seedText) {
-    state ^= character.codePointAt(0);
-    state = Math.imul(state, 16777619);
-  }
-  return () => {
-    state += 0x6d2b79f5;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
+function countGivens(puzzle) {
+  return [...puzzle].filter((value) => value !== "0").length;
 }
 
 function parseRecord(line, filename, lineNumber) {
@@ -35,40 +40,46 @@ function parseRecord(line, filename, lineNumber) {
   if (!match) {
     throw new Error(`${filename}:${lineNumber} 不是有效题库记录`);
   }
-  return { sourceHash: match[1], puzzle: match[2], rating: Number(match[3]) };
+  return {
+    sourceHash: match[1],
+    puzzle: match[2],
+    rating: Number(match[3]),
+    givens: countGivens(match[2]),
+  };
 }
 
-function sampleRecords(filename, difficulty) {
+function selectRecords(filename, include) {
   const lines = readFileSync(filename, "utf8").trimEnd().split("\n");
-  const random = createRandom(`${seed}:${difficulty}`);
-  const sample = [];
-
-  lines.forEach((line, index) => {
-    const record = parseRecord(line, filename, index + 1);
-    if (index < sampleSize) {
-      sample.push(record);
-      return;
-    }
-    const replacement = Math.floor(random() * (index + 1));
-    if (replacement < sampleSize) sample[replacement] = record;
-  });
-
-  for (let index = sample.length - 1; index > 0; index -= 1) {
-    const replacement = Math.floor(random() * (index + 1));
-    [sample[index], sample[replacement]] = [sample[replacement], sample[index]];
+  const candidates = lines
+    .map((line, index) => parseRecord(line, filename, index + 1))
+    .filter(include)
+    .sort((left, right) => {
+      if (left.givens !== right.givens) return right.givens - left.givens;
+      if (left.sourceHash < right.sourceHash) return -1;
+      if (left.sourceHash > right.sourceHash) return 1;
+      return 0;
+    });
+  if (candidates.length < sampleSize) {
+    throw new Error(`${filename} 只有 ${candidates.length} 道题符合筛选条件`);
   }
-  return { sample, sourceCount: lines.length };
+  return {
+    sample: candidates.slice(0, sampleSize),
+    sourceCount: lines.length,
+    candidateCount: candidates.length,
+  };
 }
 
 const imported = {};
 const sourceCounts = {};
+const candidateCounts = {};
 const seenHashes = new Set();
 const seenPuzzles = new Set();
 
-for (const difficulty of difficulties) {
-  const filename = resolve(sourceDirectory, `${difficulty}.txt`);
-  const { sample, sourceCount } = sampleRecords(filename, difficulty);
-  sourceCounts[difficulty] = sourceCount;
+for (const { difficulty, source, include } of difficultyPlans) {
+  const filename = resolve(sourceDirectory, `${source}.txt`);
+  const { sample, sourceCount, candidateCount } = selectRecords(filename, include);
+  sourceCounts[source] = sourceCount;
+  candidateCounts[difficulty] = candidateCount;
   imported[difficulty] = sample.map((record, index) => {
     if (seenHashes.has(record.sourceHash)) throw new Error(`重复哈希：${record.sourceHash}`);
     if (seenPuzzles.has(record.puzzle)) throw new Error(`重复题面：${record.sourceHash}`);
@@ -86,7 +97,9 @@ for (const difficulty of difficulties) {
       record.rating,
     ];
   });
-  console.log(`${difficulty}: 从 ${sourceCount} 题中导入 ${imported[difficulty].length} 题`);
+  console.log(
+    `${difficulty}: 从 ${candidateCount}/${sourceCount} 道候选题中导入 ${imported[difficulty].length} 题`,
+  );
 }
 
 const dataDirectory = resolve("src/domain/puzzle-data");
@@ -95,7 +108,7 @@ mkdirSync(dataDirectory, { recursive: true });
 for (const difficulty of difficulties) {
   const dataLines = [
     "// 此文件由 scripts/import-puzzles.mjs 生成，请勿手工编辑。",
-    `// 难度：${difficulty}；固定抽样种子：${seed}`,
+    `// 难度：${difficulty}；选择规则版本：${selection}`,
     "export default [",
   ];
   for (const record of imported[difficulty]) {
@@ -107,16 +120,18 @@ for (const difficulty of difficulties) {
 
 const manifestLines = [
   "// 此文件由 scripts/import-puzzles.mjs 生成，请勿手工编辑。",
-  `// 固定抽样种子：${seed}`,
+  `// 选择规则版本：${selection}`,
   `// 上游提交：${sourceRevision}`,
   "export const PUZZLE_SOURCE = " +
     JSON.stringify({
       name: 'Sudoku Exchange "Puzzle Bank"',
       url: "https://github.com/grantm/sudoku-exchange-puzzle-bank",
       revision: sourceRevision,
-      seed,
+      selection,
       sampleSize,
+      beginnerMinimumGivens,
       sourceCounts,
+      candidateCounts,
     }) +
     ";",
   "",
@@ -143,4 +158,4 @@ manifestLines.push(
 );
 
 writeFileSync(resolve("src/domain/puzzle-data.js"), manifestLines.join("\n"));
-console.log("已生成四个按难度拆分的数据文件，共 4000 题。");
+console.log("已生成五个按难度拆分的数据文件，共 5000 题。");

@@ -3,6 +3,7 @@ import {
   consumeInstructionDisplay,
   createGameFromPuzzle,
   elapsedSeconds,
+  fillWithSolution,
   pauseGame,
   resetGame,
   restoreGame,
@@ -17,6 +18,7 @@ import {
 } from "../domain/puzzles.js";
 import { createStorage } from "../infrastructure/storage.js";
 import { pageForPuzzle, PUZZLES_PER_PAGE } from "./directory-navigation.js";
+import { createConsecutiveClickController } from "./consecutive-click-controller.js";
 import { createPressController } from "./press-controller.js";
 
 const elements = {
@@ -30,6 +32,7 @@ const elements = {
   confirmation: document.querySelector("#confirmation"),
   confirmationTitle: document.querySelector("#confirmation-title"),
   confirmationMessage: document.querySelector("#confirmation-message"),
+  confirmationActions: document.querySelector(".confirmation-actions"),
   confirmationCancel: document.querySelector("#confirmation-cancel"),
   confirmationConfirm: document.querySelector("#confirmation-confirm"),
   numberPad: document.querySelector("#number-pad"),
@@ -41,6 +44,7 @@ const elements = {
   gameView: document.querySelector("#game-view"),
   difficultyTabs: document.querySelector("#difficulty-tabs"),
   directorySummary: document.querySelector("#directory-summary"),
+  puzzleTable: document.querySelector("#puzzle-table"),
   puzzleList: document.querySelector("#puzzle-list"),
   pagination: document.querySelector("#pagination"),
 };
@@ -48,10 +52,12 @@ const elements = {
 const persistence = createStorage();
 const LONG_PRESS_MILLISECONDS = 500;
 const NUMBER_INPUT_HELP = "短按填写候选 · 长按确认数字";
+const EMPTY_FASTEST_TIME = "--:--";
+const EMPTY_FASTEST_RECORDED_AT = "--年--月--日 --:--";
 let game = null;
 let selectedIndex = -1;
 let completed = false;
-let selectedDifficulty = "easy";
+let selectedDifficulty = "beginner";
 let selectedPage = 1;
 let directoryRenderVersion = 0;
 let directoryScrollToTop = false;
@@ -61,6 +67,9 @@ let statusTimeoutId = null;
 let confirmationAction = null;
 let confirmationPreviousFocus = null;
 let instructionKnowledge = persistence.loadInstructionKnowledge();
+const developerClickController = createConsecutiveClickController({
+  onTrigger: handleDeveloperAction,
+});
 
 function formatDuration(seconds) {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -69,7 +78,11 @@ function formatDuration(seconds) {
 }
 
 function formatCompletedAt(value) {
-  return value ? new Date(value).toLocaleString("zh-CN") : "—";
+  if (!value) return EMPTY_FASTEST_RECORDED_AT;
+  const completedAt = new Date(value);
+  if (Number.isNaN(completedAt.getTime())) return EMPTY_FASTEST_RECORDED_AT;
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${completedAt.getFullYear()}年${pad(completedAt.getMonth() + 1)}月${pad(completedAt.getDate())}日 ${pad(completedAt.getHours())}:${pad(completedAt.getMinutes())}`;
 }
 
 function save() {
@@ -109,14 +122,45 @@ function closeConfirmation() {
   confirmationPreviousFocus = null;
 }
 
-function showConfirmation({ title, message, confirmLabel, onConfirm }) {
+function showConfirmation({
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  showCancel = true,
+}) {
   confirmationPreviousFocus = document.activeElement;
   confirmationAction = onConfirm;
   elements.confirmationTitle.textContent = title;
   elements.confirmationMessage.textContent = message;
   elements.confirmationConfirm.textContent = confirmLabel;
+  elements.confirmationCancel.hidden = !showCancel;
+  elements.confirmationActions.classList.toggle("single-action", !showCancel);
   elements.confirmation.hidden = false;
   elements.confirmationConfirm.focus();
+}
+
+function handleDeveloperAction(index) {
+  if (!game) return;
+  if (index === 80) {
+    showConfirmation({
+      title: "开发者 · 当前题目",
+      message: [
+        `题目 ID：${game.puzzleId}`,
+        `难度：${DIFFICULTY_LABELS[game.difficulty]}（${game.difficulty}）`,
+        `题目内容：${game.puzzle.join("")}`,
+      ].join("\n"),
+      confirmLabel: "关闭",
+      onConfirm: null,
+      showCancel: false,
+    });
+    return;
+  }
+  if (index === 79) {
+    game = fillWithSolution(game);
+    save();
+    renderBoard();
+  }
 }
 
 function renderBoard() {
@@ -145,8 +189,16 @@ function renderBoard() {
       cell.append(notes);
     }
     cell.addEventListener("click", () => {
+      const wasSelected = selectedIndex === index;
       selectedIndex = index;
       setStatus("");
+      if (
+        developerClickController.register(index, {
+          selected: wasSelected,
+        })
+      ) {
+        return;
+      }
       renderBoard();
     });
     elements.board.append(cell);
@@ -241,7 +293,7 @@ async function openPuzzle(puzzleId, difficulty) {
 
 function puzzleStatus(puzzleId, progress, statistics) {
   if (statistics[puzzleId]?.challengeCount > 0) return "已完成";
-  if (progress[puzzleId]) return "进行中";
+  if (progress[puzzleId]) return "未完成";
   return "未开始";
 }
 
@@ -257,16 +309,18 @@ async function renderDirectory() {
       button.className = difficulty === selectedDifficulty ? "active" : "";
       button.setAttribute("aria-selected", String(difficulty === selectedDifficulty));
       button.addEventListener("click", () => {
+        if (difficulty === selectedDifficulty) return;
         selectedDifficulty = difficulty;
         selectedPage = 1;
-        directoryScrollToTop = true;
         returnToPuzzleId = null;
         void renderDirectory();
       });
       return button;
     }),
   );
+  elements.directorySummary.hidden = false;
   elements.directorySummary.innerHTML = '<p class="loading-message">正在翻阅题目…</p>';
+  elements.puzzleTable.hidden = true;
   elements.puzzleList.replaceChildren();
   elements.pagination.replaceChildren();
 
@@ -275,6 +329,7 @@ async function renderDirectory() {
     puzzles = await puzzlesForDifficulty(difficultyToRender);
   } catch {
     if (renderVersion === directoryRenderVersion) {
+      elements.directorySummary.hidden = false;
       elements.directorySummary.innerHTML =
         '<p class="loading-message">题库加载失败，请刷新后重试。</p>';
     }
@@ -287,17 +342,8 @@ async function renderDirectory() {
   const completedCount = puzzles.filter(
     (puzzle) => statistics[puzzle.id]?.challengeCount > 0,
   ).length;
-  const startedCount = puzzles.filter(
-    (puzzle) => progress[puzzle.id] || statistics[puzzle.id]?.challengeCount > 0,
-  ).length;
-
-  elements.directorySummary.innerHTML = `
-    <div><strong>${puzzles.length}</strong><span>总题数</span></div>
-    <div><strong>${startedCount}</strong><span>已开始</span></div>
-    <div><strong>${completedCount}</strong><span>已完成</span></div>
-    <div><strong>${puzzles.length - completedCount}</strong><span>未完成</span></div>
-    <p>完成 ${completedCount} / ${puzzles.length}</p>
-  `;
+  elements.directorySummary.hidden = true;
+  elements.puzzleTable.hidden = false;
 
   const pageCount = Math.ceil(puzzles.length / PUZZLES_PER_PAGE);
   selectedPage = Math.min(Math.max(selectedPage, 1), pageCount);
@@ -311,6 +357,7 @@ async function renderDirectory() {
       const status = puzzleStatus(puzzle.id, progress, statistics);
       const item = document.createElement("article");
       item.className = "puzzle-item";
+      item.role = "row";
       item.dataset.puzzleId = puzzle.id;
       if (puzzle.id === returnToPuzzleId) {
         item.classList.add("current-puzzle");
@@ -321,20 +368,19 @@ async function renderDirectory() {
           ? hasProgress
             ? "继续挑战"
             : "再次挑战"
-          : status === "进行中"
+          : status === "未完成"
             ? "继续"
             : "开始";
       item.innerHTML = `
-        <div class="puzzle-identity">
-          <span class="puzzle-number">${String(puzzle.number).padStart(2, "0")}</span>
-          <span class="status-badge" data-status="${status}">${status}</span>
-        </div>
-        <dl>
-          <div><dt>挑战次数</dt><dd>${record?.challengeCount ?? 0}</dd></div>
-          <div><dt>最短用时</dt><dd>${record ? formatDuration(record.bestSeconds) : "—"}</dd></div>
-          <div><dt>最佳完成时间</dt><dd>${record ? formatCompletedAt(record.bestCompletedAt) : "—"}</dd></div>
-        </dl>
+        <span class="puzzle-number" role="cell">${String(puzzle.number).padStart(2, "0")}</span>
+        <span role="cell"><span class="status-badge" data-status="${status}">${status}</span></span>
+        <span class="puzzle-statistic" role="cell">${record?.challengeCount ?? 0}</span>
+        <span class="puzzle-statistic" role="cell">${record ? formatDuration(record.bestSeconds) : EMPTY_FASTEST_TIME}</span>
+        <span class="puzzle-statistic puzzle-recorded-at" role="cell">${formatCompletedAt(record?.bestCompletedAt)}</span>
       `;
+      const actionCell = document.createElement("span");
+      actionCell.className = "puzzle-action-cell";
+      actionCell.role = "cell";
       const button = document.createElement("button");
       button.type = "button";
       button.className = "puzzle-action";
@@ -343,7 +389,8 @@ async function renderDirectory() {
       button.addEventListener("click", () => {
         void openPuzzle(puzzle.id, puzzle.difficulty);
       });
-      item.append(button);
+      actionCell.append(button);
+      item.append(actionCell);
       return item;
     });
   elements.puzzleList.replaceChildren(...puzzleItems);
@@ -359,6 +406,7 @@ async function renderDirectory() {
     void renderDirectory();
   });
   const pageLabel = document.createElement("span");
+  pageLabel.className = "pagination-page";
   pageLabel.textContent = `第 ${selectedPage} / ${pageCount} 页`;
   const next = document.createElement("button");
   next.type = "button";
@@ -370,7 +418,11 @@ async function renderDirectory() {
     returnToPuzzleId = null;
     void renderDirectory();
   });
-  elements.pagination.replaceChildren(previous, pageLabel, next);
+  const paginationSummary = document.createElement("span");
+  paginationSummary.className = "pagination-summary";
+  paginationSummary.innerHTML =
+    `总题数 <strong>${puzzles.length}</strong><span aria-hidden="true">·</span>已完成 <strong>${completedCount}</strong>`;
+  elements.pagination.replaceChildren(paginationSummary, previous, pageLabel, next);
 
   if (returnTarget) {
     returnToPuzzleId = null;
@@ -380,7 +432,7 @@ async function renderDirectory() {
   } else if (directoryScrollToTop) {
     directoryScrollToTop = false;
     requestAnimationFrame(() => {
-      elements.directorySummary.scrollIntoView({ block: "start", behavior: "auto" });
+      elements.puzzleTable.scrollIntoView({ block: "start", behavior: "auto" });
     });
   }
 }

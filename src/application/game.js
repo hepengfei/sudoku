@@ -6,7 +6,7 @@ function emptyNotes() {
 }
 
 export async function createGame(
-  difficulty = "easy",
+  difficulty = "beginner",
   excludedId = null,
   now = Date.now,
   random,
@@ -95,6 +95,14 @@ export function clearCell(game, index) {
     noteIndex === index ? [] : [...entry],
   );
   return { ...game, board, notes };
+}
+
+export function fillWithSolution(game) {
+  return {
+    ...game,
+    board: [...game.solution],
+    notes: emptyNotes(),
+  };
 }
 
 export function toggleValue(game, index, value) {

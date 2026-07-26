@@ -88,25 +88,64 @@ test("内置题目格式正确、答案匹配且解唯一", async () => {
   }
 });
 
-test("四个难度各包含 1000 道不重复题目", async () => {
+function countGivens(entry) {
+  return entry.puzzle.filter(Boolean).length;
+}
+
+function assertOrderedByGivensThenHash(puzzles) {
+  for (let index = 1; index < puzzles.length; index += 1) {
+    const previous = puzzles[index - 1];
+    const current = puzzles[index];
+    const previousGivens = countGivens(previous);
+    const currentGivens = countGivens(current);
+    assert.ok(
+      previousGivens > currentGivens ||
+        (previousGivens === currentGivens &&
+          previous.sourceHash <= current.sourceHash),
+      `${previous.id} 应排在 ${current.id} 前面`,
+    );
+  }
+}
+
+test("五个难度各包含 1000 道不重复题目", async () => {
   assert.deepEqual(DIFFICULTY_LABELS, {
+    beginner: "入门",
     easy: "简单",
     medium: "中等",
     hard: "困难",
     diabolical: "地狱",
   });
   const puzzles = await allPuzzles();
-  assert.equal(puzzles.length, 4000);
-  assert.equal(new Set(puzzles.map((entry) => entry.id)).size, 4000);
-  assert.equal(new Set(puzzles.map((entry) => serializeBoard(entry.puzzle))).size, 4000);
+  assert.equal(puzzles.length, 5000);
+  assert.equal(new Set(puzzles.map((entry) => entry.id)).size, 5000);
+  assert.equal(new Set(puzzles.map((entry) => serializeBoard(entry.puzzle))).size, 5000);
   for (const difficulty of Object.keys(DIFFICULTY_LABELS)) {
     assert.equal((await puzzlesForDifficulty(difficulty)).length, 1000);
   }
 });
 
-test("难度评分与上游四档映射一致", async () => {
+test("题目按给定数降序和来源哈希升序选择", async () => {
+  for (const difficulty of Object.keys(DIFFICULTY_LABELS)) {
+    assertOrderedByGivensThenHash(await puzzlesForDifficulty(difficulty));
+  }
+  assert.ok(
+    (await puzzlesForDifficulty("beginner")).every(
+      (entry) => countGivens(entry) >= PUZZLE_SOURCE.beginnerMinimumGivens,
+    ),
+  );
+  assert.ok(
+    (await puzzlesForDifficulty("easy")).every(
+      (entry) => countGivens(entry) < PUZZLE_SOURCE.beginnerMinimumGivens,
+    ),
+  );
+});
+
+test("难度评分与上游四档及入门拆分映射一致", async () => {
   assert.equal(PUZZLE_SOURCE.sampleSize, 1000);
-  assert.equal(PUZZLE_SOURCE.seed, "sudoku-book-v1-2026-07-26");
+  assert.equal(PUZZLE_SOURCE.selection, "sudoku-book-v2-givens-desc-2026-07-26");
+  assert.equal(PUZZLE_SOURCE.beginnerMinimumGivens, 40);
+  assert.equal(PUZZLE_SOURCE.candidateCounts.beginner, 2836);
+  assert.ok((await puzzlesForDifficulty("beginner")).every((entry) => entry.rating < 1.5));
   assert.ok((await puzzlesForDifficulty("easy")).every((entry) => entry.rating < 1.5));
   assert.ok(
     (await puzzlesForDifficulty("medium")).every(
