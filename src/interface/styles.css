@@ -1,0 +1,377 @@
+:root {
+  color-scheme: light;
+  font-family: "Avenir Next", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  color: #202823;
+  background: #f5f1e8;
+  font-synthesis: none;
+  --ink: #202823;
+  --muted: #72766f;
+  --paper: #fffdf7;
+  --accent: #c85f3c;
+  --sage: #78907e;
+  --line: #a7aaa1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 70%), transparent 34rem),
+    linear-gradient(135deg, #f5f1e8, #ece7db);
+}
+
+button,
+select {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.app-shell {
+  width: min(1120px, 100% - 32px);
+  margin: 0 auto;
+  padding: 28px 0 48px;
+}
+
+.topbar,
+.game-meta,
+.dialog-head,
+.history-item,
+.mode-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar {
+  margin-bottom: 24px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-family: "Songti SC", "Noto Serif CJK SC", serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.eyebrow {
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.text-button,
+.close-button {
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+}
+
+.game-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 670px) minmax(210px, 270px);
+  gap: clamp(28px, 6vw, 72px);
+  align-items: center;
+  justify-content: center;
+}
+
+.board-panel {
+  min-width: 0;
+}
+
+.game-meta {
+  min-height: 44px;
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.game-meta label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+select {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+#timer {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.board {
+  display: grid;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  background: var(--ink);
+  grid-template-columns: repeat(9, 1fr);
+  gap: 1px;
+  box-shadow: 0 24px 60px rgb(50 46 37 / 13%);
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: var(--paper);
+  place-items: center;
+  cursor: pointer;
+  font-size: clamp(1.05rem, 4.1vw, 2rem);
+  font-weight: 500;
+  transition: background 120ms ease;
+}
+
+.cell:nth-child(3n):not(:nth-child(9n)) {
+  border-right: 2px solid var(--ink);
+}
+
+.cell:nth-child(n + 19):nth-child(-n + 27),
+.cell:nth-child(n + 46):nth-child(-n + 54) {
+  border-bottom: 2px solid var(--ink);
+}
+
+.cell.given {
+  background: #efecdf;
+  font-weight: 700;
+}
+
+.cell.selected {
+  background: #f3cdbd;
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.notes {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 4%;
+  color: var(--sage);
+  grid-template-columns: repeat(3, 1fr);
+  font-size: clamp(0.44rem, 1.35vw, 0.78rem);
+  line-height: 1;
+}
+
+.notes span {
+  display: grid;
+  place-items: center;
+}
+
+.status {
+  min-height: 28px;
+  padding-top: 10px;
+  color: var(--accent);
+  text-align: center;
+  font-weight: 600;
+}
+
+.controls {
+  display: grid;
+  gap: 14px;
+}
+
+.mode-switch {
+  padding: 4px;
+  border: 1px solid #d4d0c6;
+  border-radius: 999px;
+  background: rgb(255 253 247 / 70%);
+}
+
+.mode {
+  width: 50%;
+  padding: 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.mode.active {
+  background: var(--ink);
+  color: white;
+}
+
+.number-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.number-pad button {
+  aspect-ratio: 1.15;
+  border: 1px solid #d4d0c6;
+  border-radius: 10px;
+  background: var(--paper);
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+
+.erase-button,
+.submit-button {
+  min-height: 46px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.erase-button {
+  border: 1px solid #c8c4ba;
+  background: transparent;
+}
+
+.submit-button {
+  border: 0;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+}
+
+.mistakes {
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.86rem;
+}
+
+dialog {
+  width: min(520px, calc(100% - 32px));
+  max-height: min(680px, calc(100vh - 48px));
+  padding: 24px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: 0 28px 80px rgb(31 35 31 / 25%);
+}
+
+dialog::backdrop {
+  background: rgb(30 35 31 / 45%);
+  backdrop-filter: blur(3px);
+}
+
+.dialog-head {
+  margin-bottom: 20px;
+}
+
+.dialog-head h2 {
+  font-family: "Songti SC", serif;
+  font-size: 1.8rem;
+}
+
+.close-button {
+  border: 0;
+  font-size: 2rem;
+}
+
+.history-item {
+  padding: 14px 0;
+  border-top: 1px solid #ddd8ce;
+}
+
+.history-item > div {
+  display: grid;
+  gap: 3px;
+}
+
+.history-item > div:last-child {
+  text-align: right;
+}
+
+.history-item span,
+.empty-history {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.empty-history {
+  padding: 48px 0;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    width: min(620px, 100% - 24px);
+    padding-top: 18px;
+  }
+
+  .topbar {
+    margin-bottom: 14px;
+  }
+
+  .game-layout {
+    display: block;
+  }
+
+  .controls {
+    margin-top: 10px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mode-switch,
+  .number-pad,
+  .mistakes {
+    grid-column: 1 / -1;
+  }
+
+  .number-pad {
+    grid-template-columns: repeat(9, 1fr);
+    gap: 4px;
+  }
+
+  .number-pad button {
+    aspect-ratio: 0.82;
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-shell {
+    width: calc(100% - 16px);
+    padding-top: 12px;
+  }
+
+  .eyebrow {
+    display: none;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  .game-meta {
+    font-size: 0.84rem;
+  }
+
+  .cell {
+    font-size: 1.25rem;
+  }
+
+  .notes {
+    font-size: 0.48rem;
+  }
+}

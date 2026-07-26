@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f1e8" />
+    <title>数独本</title>
+    <link rel="stylesheet" href="/src/interface/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SUDOKU NOTEBOOK</p>
+          <h1>数独本</h1>
+        </div>
+        <button class="text-button" id="history-button" type="button">历史</button>
+      </header>
+
+      <section class="game-layout" aria-label="数独游戏">
+        <div class="board-panel">
+          <div class="game-meta">
+            <label>
+              难度
+              <select id="difficulty">
+                <option value="easy">简单</option>
+                <option value="medium">中等</option>
+                <option value="hard">困难</option>
+              </select>
+            </label>
+            <span id="timer" aria-label="用时">00:00</span>
+            <button class="text-button" id="new-game" type="button">换一题</button>
+          </div>
+          <div class="board" id="board" role="grid" aria-label="九乘九数独棋盘"></div>
+          <p class="status" id="status" aria-live="polite"></p>
+        </div>
+
+        <aside class="controls" aria-label="输入面板">
+          <div class="mode-switch" role="group" aria-label="输入模式">
+            <button class="mode active" data-mode="value" type="button">数字</button>
+            <button class="mode" data-mode="notes" type="button">候选</button>
+          </div>
+          <div class="number-pad" id="number-pad"></div>
+          <button class="erase-button" id="erase" type="button">清除所选格</button>
+          <button class="submit-button" id="submit" type="button">提交答案</button>
+          <p class="mistakes">提交判错 <strong id="mistakes">0</strong> 次</p>
+        </aside>
+      </section>
+    </main>
+
+    <dialog id="history-dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">LOCAL RECORDS</p>
+          <h2>完成历史</h2>
+        </div>
+        <button class="close-button" id="close-history" type="button" aria-label="关闭">×</button>
+      </div>
+      <div id="history-list"></div>
+    </dialog>
+
+    <script type="module" src="/src/interface/app.js"></script>
+  </body>
+</html>

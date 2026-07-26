@@ -1,0 +1,14 @@
+{
+  "name": "sudoku-notebook",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "check": "./scripts/check",
+    "test": "./scripts/test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
