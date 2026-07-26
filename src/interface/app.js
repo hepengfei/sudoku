@@ -1,4 +1,6 @@
 import {
+  clearCell,
+  consumeInstructionDisplay,
   createGameFromPuzzle,
   elapsedSeconds,
   pauseGame,
@@ -25,6 +27,11 @@ const elements = {
   timer: document.querySelector("#timer"),
   bestTime: document.querySelector("#best-time"),
   status: document.querySelector("#status"),
+  confirmation: document.querySelector("#confirmation"),
+  confirmationTitle: document.querySelector("#confirmation-title"),
+  confirmationMessage: document.querySelector("#confirmation-message"),
+  confirmationCancel: document.querySelector("#confirmation-cancel"),
+  confirmationConfirm: document.querySelector("#confirmation-confirm"),
   numberPad: document.querySelector("#number-pad"),
   reset: document.querySelector("#reset"),
   submit: document.querySelector("#submit"),
@@ -40,6 +47,7 @@ const elements = {
 
 const persistence = createStorage();
 const LONG_PRESS_MILLISECONDS = 500;
+const NUMBER_INPUT_HELP = "短按填写候选 · 长按确认数字";
 let game = null;
 let selectedIndex = -1;
 let completed = false;
@@ -49,6 +57,10 @@ let directoryRenderVersion = 0;
 let directoryScrollToTop = false;
 let returnToPuzzleId = null;
 let currentBestSeconds = null;
+let statusTimeoutId = null;
+let confirmationAction = null;
+let confirmationPreviousFocus = null;
+let instructionKnowledge = persistence.loadInstructionKnowledge();
 
 function formatDuration(seconds) {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -64,10 +76,47 @@ function save() {
   if (game && !completed) persistence.saveProgress(pauseGame(game));
 }
 
-function setStatus(message) {
+function setStatus(message, duration = 0) {
+  clearTimeout(statusTimeoutId);
+  statusTimeoutId = null;
   elements.status.textContent = message;
   elements.status.hidden = !message;
   elements.gameInformation.hidden = Boolean(message);
+  if (message && duration > 0) {
+    statusTimeoutId = setTimeout(() => setStatus(""), duration);
+  }
+}
+
+function showInstruction(message, control) {
+  if (!game || instructionKnowledge[control]) return;
+  const result = consumeInstructionDisplay(game);
+  game = result.game;
+  if (!result.shouldDisplay) return;
+  save();
+  setStatus(message, 5000);
+}
+
+function markInstructionLearned(control, message) {
+  instructionKnowledge = persistence.markInstructionLearned(control);
+  if (elements.status.textContent === message) setStatus("");
+}
+
+function closeConfirmation() {
+  if (elements.confirmation.hidden) return;
+  elements.confirmation.hidden = true;
+  confirmationAction = null;
+  confirmationPreviousFocus?.focus();
+  confirmationPreviousFocus = null;
+}
+
+function showConfirmation({ title, message, confirmLabel, onConfirm }) {
+  confirmationPreviousFocus = document.activeElement;
+  confirmationAction = onConfirm;
+  elements.confirmationTitle.textContent = title;
+  elements.confirmationMessage.textContent = message;
+  elements.confirmationConfirm.textContent = confirmLabel;
+  elements.confirmation.hidden = false;
+  elements.confirmationConfirm.focus();
 }
 
 function renderBoard() {
@@ -105,12 +154,12 @@ function renderBoard() {
   elements.puzzleTitle.textContent =
     `${DIFFICULTY_LABELS[game.difficulty]} · 第 ${game.puzzleNumber} 题`;
   elements.bestTime.textContent =
-    currentBestSeconds === null ? "—" : formatDuration(currentBestSeconds);
+    currentBestSeconds === null ? "--:--" : formatDuration(currentBestSeconds);
 }
 
 function enterCandidate(value) {
   if (!game || completed || selectedIndex < 0) return;
-  setStatus("");
+  if (elements.status.textContent !== NUMBER_INPUT_HELP) setStatus("");
   game = toggleNote(game, selectedIndex, value);
   save();
   renderBoard();
@@ -118,13 +167,60 @@ function enterCandidate(value) {
 
 function enterValue(value) {
   if (!game || completed || selectedIndex < 0) return;
-  setStatus("");
+  if (elements.status.textContent !== NUMBER_INPUT_HELP) setStatus("");
   game = toggleValue(game, selectedIndex, value);
   save();
   renderBoard();
 }
 
+function clearSelectedCell() {
+  if (!game || completed || selectedIndex < 0) return;
+  game = clearCell(game, selectedIndex);
+  save();
+  renderBoard();
+}
+
+function resetAllCells() {
+  if (!game) return;
+  if (completed) {
+    const statistic = persistence.loadStatistics()[game.puzzleId];
+    currentBestSeconds = statistic?.bestSeconds ?? null;
+  }
+  game = resetGame(game);
+  selectedIndex = game.puzzle.findIndex((value) => value === 0);
+  completed = false;
+  setStatus("已清空全部，可以重新开始。", 5000);
+  elements.timer.textContent = "00:00";
+  save();
+  renderBoard();
+}
+
+function submitCurrentGame() {
+  if (!game || completed) return;
+  const result = submitGame(game);
+  game = result.game;
+  if (result.correct) {
+    const elapsed = elapsedSeconds(game);
+    const completedAt = new Date().toISOString();
+    completed = true;
+    persistence.recordCompletion({
+      puzzleId: game.puzzleId,
+      elapsedSeconds: elapsed,
+      completedAt,
+    });
+    currentBestSeconds =
+      persistence.loadStatistics()[game.puzzleId]?.bestSeconds ?? elapsed;
+    persistence.clearProgress(game.puzzleId);
+    setStatus(`回答正确 · 用时 ${formatDuration(elapsed)}`);
+  } else {
+    setStatus("答案不正确，再检查一下吧。");
+    save();
+  }
+  renderBoard();
+}
+
 async function openPuzzle(puzzleId, difficulty) {
+  closeConfirmation();
   const puzzle = await getPuzzleById(puzzleId, difficulty);
   const saved = persistence.loadProgress(puzzleId);
   const statistic = persistence.loadStatistics()[puzzleId];
@@ -291,10 +387,12 @@ async function renderDirectory() {
 
 function openDirectory() {
   const returningFromGame = !elements.gameView.hidden;
+  closeConfirmation();
   save();
   elements.gameView.hidden = true;
   elements.gameMenu.hidden = true;
-  elements.puzzleTitle.hidden = true;
+  elements.puzzleTitle.textContent = "题库";
+  elements.puzzleTitle.hidden = false;
   elements.directoryView.hidden = false;
   if (game && returningFromGame) {
     selectedDifficulty = game.difficulty;
@@ -312,9 +410,12 @@ for (let value = 1; value <= 9; value += 1) {
     onShortPress: () => enterCandidate(value),
     onLongPress: () => {
       button.classList.remove("pressing");
+      markInstructionLearned("number", NUMBER_INPUT_HELP);
       enterValue(value);
     },
   });
+
+  const showNumberHelp = () => showInstruction(NUMBER_INPUT_HELP, "number");
 
   button.type = "button";
   button.textContent = value;
@@ -322,6 +423,7 @@ for (let value = 1; value <= 9; value += 1) {
   button.addEventListener("pointerdown", (event) => {
     if (!event.isPrimary || event.button !== 0 || !pressController.start(event.pointerId)) return;
     event.preventDefault();
+    showNumberHelp();
     button.classList.add("pressing");
     button.setPointerCapture(event.pointerId);
   });
@@ -343,6 +445,7 @@ for (let value = 1; value <= 9; value += 1) {
       if (supportsPointerEvents || event.touches.length !== 1 || !pressController.start("touch")) {
         return;
       }
+      showNumberHelp();
       button.classList.add("pressing");
     },
     { passive: false },
@@ -367,7 +470,9 @@ for (let value = 1; value <= 9; value += 1) {
   );
   button.addEventListener("contextmenu", (event) => event.preventDefault());
   button.addEventListener("click", (event) => {
-    if (event.detail === 0) enterCandidate(value);
+    if (event.detail !== 0) return;
+    showNumberHelp();
+    enterCandidate(value);
   });
   elements.numberPad.append(button);
 }
@@ -375,56 +480,125 @@ for (let value = 1; value <= 9; value += 1) {
 elements.numberPad.addEventListener("selectstart", (event) => event.preventDefault());
 elements.numberPad.addEventListener("dragstart", (event) => event.preventDefault());
 elements.backToDirectory.addEventListener("click", openDirectory);
-elements.reset.addEventListener("click", () => {
-  if (
-    !game ||
-    !window.confirm("确认清空当前题的全部填写和候选，并重新计时吗？")
-  ) {
-    return;
-  }
-  if (completed) {
-    const statistic = persistence.loadStatistics()[game.puzzleId];
-    currentBestSeconds = statistic?.bestSeconds ?? null;
-  }
-  game = resetGame(game);
-  selectedIndex = game.puzzle.findIndex((value) => value === 0);
-  completed = false;
-  setStatus("已清空，可以重新开始。");
-  elements.timer.textContent = "00:00";
-  save();
-  renderBoard();
-});
-elements.submit.addEventListener("click", () => {
-  if (
-    !game ||
-    completed ||
-    !window.confirm("确认提交当前答案进行检查吗？")
-  ) {
-    return;
-  }
-  const result = submitGame(game);
-  game = result.game;
-  if (result.correct) {
-    const elapsed = elapsedSeconds(game);
-    const completedAt = new Date().toISOString();
-    completed = true;
-    persistence.recordCompletion({
-      puzzleId: game.puzzleId,
-      elapsedSeconds: elapsed,
-      completedAt,
+
+const resetSupportsPointerEvents = "PointerEvent" in window;
+const resetPressController = createPressController({
+  delay: LONG_PRESS_MILLISECONDS,
+  onShortPress: clearSelectedCell,
+  onLongPress: () => {
+    elements.reset.classList.remove("pressing");
+    markInstructionLearned(
+      "clear",
+      "短按清空单元格 · 长按清空全部",
+    );
+    showConfirmation({
+      title: "清空全部",
+      message: "确认清空本题的全部填写和候选，并重新计时吗？",
+      confirmLabel: "清空全部",
+      onConfirm: resetAllCells,
     });
-    currentBestSeconds =
-      persistence.loadStatistics()[game.puzzleId]?.bestSeconds ?? elapsed;
-    persistence.clearProgress(game.puzzleId);
-    setStatus(`回答正确 · 用时 ${formatDuration(elapsed)}`);
-  } else {
-    setStatus("答案不正确，再检查一下吧。");
-    save();
+  },
+});
+
+function showResetHelp() {
+  showInstruction("短按清空单元格 · 长按清空全部", "clear");
+}
+
+elements.reset.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || event.button !== 0 || !resetPressController.start(event.pointerId)) {
+    return;
   }
-  renderBoard();
+  event.preventDefault();
+  showResetHelp();
+  elements.reset.classList.add("pressing");
+  elements.reset.setPointerCapture(event.pointerId);
+});
+elements.reset.addEventListener("pointerup", (event) => {
+  const result = resetPressController.end(event.pointerId);
+  if (result === null) return;
+  event.preventDefault();
+  elements.reset.classList.remove("pressing");
+  if (elements.reset.hasPointerCapture(event.pointerId)) {
+    elements.reset.releasePointerCapture(event.pointerId);
+  }
+});
+elements.reset.addEventListener("pointercancel", (event) => {
+  if (!resetPressController.cancel(event.pointerId)) return;
+  elements.reset.classList.remove("pressing");
+});
+elements.reset.addEventListener(
+  "touchstart",
+  (event) => {
+    if (event.cancelable) event.preventDefault();
+    if (
+      resetSupportsPointerEvents ||
+      event.touches.length !== 1 ||
+      !resetPressController.start("reset-touch")
+    ) {
+      return;
+    }
+    showResetHelp();
+    elements.reset.classList.add("pressing");
+  },
+  { passive: false },
+);
+elements.reset.addEventListener(
+  "touchend",
+  (event) => {
+    if (event.cancelable) event.preventDefault();
+    if (resetSupportsPointerEvents || resetPressController.end("reset-touch") === null) {
+      return;
+    }
+    elements.reset.classList.remove("pressing");
+  },
+  { passive: false },
+);
+elements.reset.addEventListener(
+  "touchcancel",
+  (event) => {
+    if (event.cancelable) event.preventDefault();
+    if (
+      resetSupportsPointerEvents ||
+      !resetPressController.cancel("reset-touch")
+    ) {
+      return;
+    }
+    elements.reset.classList.remove("pressing");
+  },
+  { passive: false },
+);
+elements.reset.addEventListener("contextmenu", (event) => event.preventDefault());
+elements.reset.addEventListener("click", (event) => {
+  if (event.detail !== 0) return;
+  showResetHelp();
+  clearSelectedCell();
+});
+
+elements.submit.addEventListener("click", () => {
+  if (!game || completed) return;
+  showConfirmation({
+    title: "提交检查",
+    message: "确认提交当前答案进行检查吗？",
+    confirmLabel: "提交检查",
+    onConfirm: submitCurrentGame,
+  });
+});
+
+elements.confirmationCancel.addEventListener("click", closeConfirmation);
+elements.confirmationConfirm.addEventListener("click", () => {
+  const action = confirmationAction;
+  closeConfirmation();
+  action?.();
+});
+elements.confirmation.addEventListener("click", (event) => {
+  if (event.target === elements.confirmation) closeConfirmation();
 });
 
 document.addEventListener("keydown", (event) => {
+  if (!elements.confirmation.hidden) {
+    if (event.key === "Escape") closeConfirmation();
+    return;
+  }
   if (/^[1-9]$/.test(event.key)) enterCandidate(Number(event.key));
 });
 window.addEventListener("pagehide", save);

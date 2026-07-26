@@ -28,6 +28,7 @@ export function createGameFromPuzzle(selected, now = Date.now) {
     startedAt: now(),
     elapsedBeforeResume: 0,
     mistakes: 0,
+    instructionDisplayCount: 0,
   };
 }
 
@@ -47,6 +48,9 @@ export function restoreGame(saved, now = Date.now) {
     version: 2,
     puzzleNumber: saved.puzzleNumber ?? 1,
     notes: Array.isArray(saved.notes) && saved.notes.length === CELL_COUNT ? saved.notes : emptyNotes(),
+    instructionDisplayCount: Number.isInteger(saved.instructionDisplayCount)
+      ? Math.max(0, saved.instructionDisplayCount)
+      : 0,
     startedAt: now(),
   };
 }
@@ -67,7 +71,30 @@ export function resetGame(game, now = Date.now) {
     startedAt: now(),
     elapsedBeforeResume: 0,
     mistakes: 0,
+    instructionDisplayCount: 0,
   };
+}
+
+export function consumeInstructionDisplay(game, limit = 10) {
+  if (["hard", "diabolical"].includes(game.difficulty)) {
+    return { game, shouldDisplay: false };
+  }
+  const count = game.instructionDisplayCount ?? 0;
+  if (count >= limit) return { game, shouldDisplay: false };
+  return {
+    game: { ...game, instructionDisplayCount: count + 1 },
+    shouldDisplay: true,
+  };
+}
+
+export function clearCell(game, index) {
+  if (game.puzzle[index] !== 0) return game;
+  const board = [...game.board];
+  board[index] = 0;
+  const notes = game.notes.map((entry, noteIndex) =>
+    noteIndex === index ? [] : [...entry],
+  );
+  return { ...game, board, notes };
 }
 
 export function toggleValue(game, index, value) {

@@ -2,6 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+test("题库标题与应用名称共用顶部标题行", () => {
+  const markup = readFileSync(
+    new URL("../index.html", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    markup,
+    /<h1>数独本<\/h1>\s*<span class="header-puzzle-title" id="puzzle-title">题库<\/span>/,
+  );
+  assert.doesNotMatch(markup, /directory-heading/);
+  assert.doesNotMatch(markup, /一本留在这台设备上的数独书/);
+});
+
 test("数独棋盘始终使用九个等高行", () => {
   const styles = readFileSync(
     new URL("../src/interface/styles.css", import.meta.url),
@@ -55,6 +69,23 @@ test("用时信息和临时提示共用无内部分隔线的一乘九信息条",
 
   assert.match(stripRule, /aspect-ratio:\s*9\s*\/\s*1/);
   assert.doesNotMatch(stripRule, /background-image/);
+});
+
+test("清空全部和提交检查使用覆盖棋盘的确认层", () => {
+  const styles = readFileSync(
+    new URL("../src/interface/styles.css", import.meta.url),
+    "utf8",
+  );
+  const confirmationRule = styles.match(
+    /\.board-confirmation\s*\{(?<declarations>[^}]+)\}/,
+  )?.groups?.declarations;
+  const actionsRule = styles.match(
+    /\.confirmation-actions\s*\{(?<declarations>[^}]+)\}/,
+  )?.groups?.declarations;
+
+  assert.match(confirmationRule, /position:\s*absolute/);
+  assert.match(confirmationRule, /inset:\s*0/);
+  assert.match(actionsRule, /grid-template-columns:\s*repeat\(2,\s*1fr\)/);
 });
 
 test("页面滚动限制在应用容器内并禁止越过内容边界", () => {

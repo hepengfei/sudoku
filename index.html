@@ -13,7 +13,7 @@
         <div class="title-group">
           <p class="eyebrow">SUDOKU NOTEBOOK</p>
           <h1>数独本</h1>
-          <span class="header-puzzle-title" id="puzzle-title" hidden></span>
+          <span class="header-puzzle-title" id="puzzle-title">题库</span>
         </div>
         <nav class="game-menu" id="game-menu" aria-label="游戏菜单" hidden>
           <button id="back-to-directory" type="button">返回题库</button>
@@ -21,13 +21,6 @@
       </header>
 
       <section class="directory-view" id="directory-view" aria-label="题库">
-        <div class="directory-heading">
-          <div>
-            <p class="eyebrow">PUZZLE INDEX</p>
-            <h2>题库</h2>
-          </div>
-          <p>一本留在这台设备上的数独书</p>
-        </div>
         <div class="difficulty-tabs" id="difficulty-tabs" role="tablist" aria-label="题目难度"></div>
         <div class="directory-summary" id="directory-summary"></div>
         <div class="puzzle-list" id="puzzle-list"></div>
@@ -40,16 +33,43 @@
             <p class="game-information" id="game-information">
               <span>当前用时 <strong id="timer">00:00</strong></span>
               <span aria-hidden="true">·</span>
-              <span>最佳用时 <strong id="best-time">—</strong></span>
+              <span>最佳用时 <strong id="best-time">--:--</strong></span>
             </p>
             <p class="status" id="status" aria-live="polite" hidden></p>
           </div>
-          <div class="board" id="board" role="grid" aria-label="九乘九数独棋盘"></div>
+          <div class="board-stage">
+            <div class="board" id="board" role="grid" aria-label="九乘九数独棋盘"></div>
+            <div
+              class="board-confirmation"
+              id="confirmation"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirmation-title"
+              aria-describedby="confirmation-message"
+              hidden
+            >
+              <div class="confirmation-card">
+                <h2 id="confirmation-title">确认操作</h2>
+                <p id="confirmation-message"></p>
+                <div class="confirmation-actions">
+                  <button id="confirmation-cancel" type="button">取消</button>
+                  <button class="primary" id="confirmation-confirm" type="button">确认</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <aside class="controls" aria-label="输入面板">
           <div class="control-grid">
-            <button class="side-action" id="reset" type="button">清空重做</button>
+            <button
+              class="side-action"
+              id="reset"
+              type="button"
+              aria-label="清空，短按清空单元格，长按清空全部"
+            >
+              清空重做
+            </button>
             <div class="number-pad" id="number-pad"></div>
             <button class="side-action primary" id="submit" type="button">提交检查</button>
           </div>

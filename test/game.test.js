@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  clearCell,
+  consumeInstructionDisplay,
   createGame,
   elapsedSeconds,
   resetGame,
@@ -67,6 +69,51 @@ test("清空重做会保留给定数字并重置填写、候选、用时和判�
   assert.equal(reset.startedAt, 2_000_000);
   assert.equal(reset.mistakes, 0);
   assert.equal(reset.puzzleId, game.puzzleId);
+});
+
+test("清空单元格只清除当前格的填写或候选", async () => {
+  let game = await createGame("easy", null, fixedNow, fixedRandom);
+  const firstEmpty = game.puzzle.findIndex((value) => value === 0);
+  const secondEmpty = game.puzzle.findIndex(
+    (value, index) => value === 0 && index !== firstEmpty,
+  );
+  game = toggleValue(game, firstEmpty, 8);
+  game = toggleNote(game, secondEmpty, 3);
+
+  const valueCleared = clearCell(game, firstEmpty);
+  assert.equal(valueCleared.board[firstEmpty], 0);
+  assert.deepEqual(valueCleared.notes[secondEmpty], [3]);
+
+  const notesCleared = clearCell(valueCleared, secondEmpty);
+  assert.deepEqual(notesCleared.notes[secondEmpty], []);
+
+  const given = game.puzzle.findIndex(Boolean);
+  assert.equal(clearCell(game, given), game);
+});
+
+test("每局只在前十次按键时显示操作说明", async () => {
+  let game = await createGame("easy", null, fixedNow, fixedRandom);
+  for (let count = 1; count <= 10; count += 1) {
+    const result = consumeInstructionDisplay(game);
+    assert.equal(result.shouldDisplay, true);
+    assert.equal(result.game.instructionDisplayCount, count);
+    game = result.game;
+  }
+
+  const exhausted = consumeInstructionDisplay(game);
+  assert.equal(exhausted.shouldDisplay, false);
+  assert.equal(exhausted.game, game);
+
+  const reset = resetGame(game);
+  assert.equal(reset.instructionDisplayCount, 0);
+  assert.equal(consumeInstructionDisplay(reset).shouldDisplay, true);
+
+  const hard = { ...reset, difficulty: "hard" };
+  const diabolical = { ...reset, difficulty: "diabolical" };
+  assert.equal(consumeInstructionDisplay(hard).shouldDisplay, false);
+  assert.equal(consumeInstructionDisplay(hard).game, hard);
+  assert.equal(consumeInstructionDisplay(diabolical).shouldDisplay, false);
+  assert.equal(consumeInstructionDisplay(diabolical).game, diabolical);
 });
 
 test("提交仅返回整体结果，错误提交累计次数", async () => {

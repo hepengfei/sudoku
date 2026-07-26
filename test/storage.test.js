@@ -96,3 +96,30 @@ test("损坏的新旧本地数据会安全回退", () => {
   assert.deepEqual(persistence.loadAllProgress(), {});
   assert.deepEqual(persistence.loadStatistics(), {});
 });
+
+test("长按学会状态会按数字键和清空键分别永久保存", () => {
+  const storage = createMemoryStorage();
+  const persistence = createStorage(storage);
+  assert.deepEqual(persistence.loadInstructionKnowledge(), {
+    number: false,
+    clear: false,
+  });
+
+  assert.deepEqual(persistence.markInstructionLearned("number"), {
+    number: true,
+    clear: false,
+  });
+  assert.deepEqual(createStorage(storage).loadInstructionKnowledge(), {
+    number: true,
+    clear: false,
+  });
+
+  assert.deepEqual(persistence.markInstructionLearned("clear"), {
+    number: true,
+    clear: true,
+  });
+  assert.throws(
+    () => persistence.markInstructionLearned("unknown"),
+    /未知操作说明类型/,
+  );
+});

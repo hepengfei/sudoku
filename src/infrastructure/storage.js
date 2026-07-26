@@ -3,6 +3,7 @@ const LEGACY_HISTORY_KEY = "sudoku-notebook:history:v1";
 const PROGRESS_KEY = "sudoku-notebook:progress:v2";
 const STATISTICS_KEY = "sudoku-notebook:statistics:v2";
 const MIGRATION_KEY = "sudoku-notebook:migrated:v2";
+const INSTRUCTION_KNOWLEDGE_KEY = "sudoku-notebook:instruction-knowledge:v1";
 
 function readJson(storage, key, fallback) {
   try {
@@ -88,6 +89,22 @@ export function createStorage(storage = window.localStorage) {
       };
       storage.setItem(STATISTICS_KEY, JSON.stringify(statistics));
       return statistics[record.puzzleId];
+    },
+    loadInstructionKnowledge() {
+      const knowledge = readObject(storage, INSTRUCTION_KNOWLEDGE_KEY);
+      return {
+        number: knowledge.number === true,
+        clear: knowledge.clear === true,
+      };
+    },
+    markInstructionLearned(control) {
+      if (!["number", "clear"].includes(control)) {
+        throw new Error("未知操作说明类型");
+      }
+      const knowledge = this.loadInstructionKnowledge();
+      knowledge[control] = true;
+      storage.setItem(INSTRUCTION_KNOWLEDGE_KEY, JSON.stringify(knowledge));
+      return knowledge;
     },
   };
 }
