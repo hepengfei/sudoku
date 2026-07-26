@@ -21,9 +21,8 @@ const elements = {
   appShell: document.querySelector(".app-shell"),
   board: document.querySelector("#board"),
   gameMenu: document.querySelector("#game-menu"),
+  gameInformation: document.querySelector("#game-information"),
   timer: document.querySelector("#timer"),
-  mistakes: document.querySelector("#mistakes"),
-  challengeNumber: document.querySelector("#challenge-number"),
   bestTime: document.querySelector("#best-time"),
   status: document.querySelector("#status"),
   numberPad: document.querySelector("#number-pad"),
@@ -49,7 +48,6 @@ let selectedPage = 1;
 let directoryRenderVersion = 0;
 let directoryScrollToTop = false;
 let returnToPuzzleId = null;
-let currentChallengeNumber = 1;
 let currentBestSeconds = null;
 
 function formatDuration(seconds) {
@@ -64,6 +62,12 @@ function formatCompletedAt(value) {
 
 function save() {
   if (game && !completed) persistence.saveProgress(pauseGame(game));
+}
+
+function setStatus(message) {
+  elements.status.textContent = message;
+  elements.status.hidden = !message;
+  elements.gameInformation.hidden = Boolean(message);
 }
 
 function renderBoard() {
@@ -93,21 +97,20 @@ function renderBoard() {
     }
     cell.addEventListener("click", () => {
       selectedIndex = index;
-      elements.status.textContent = "";
+      setStatus("");
       renderBoard();
     });
     elements.board.append(cell);
   });
   elements.puzzleTitle.textContent =
-    `${DIFFICULTY_LABELS[game.difficulty]} · ${game.puzzleNumber}`;
-  elements.mistakes.textContent = game.mistakes;
-  elements.challengeNumber.textContent = `第 ${currentChallengeNumber} 次`;
+    `${DIFFICULTY_LABELS[game.difficulty]} · 第 ${game.puzzleNumber} 题`;
   elements.bestTime.textContent =
     currentBestSeconds === null ? "—" : formatDuration(currentBestSeconds);
 }
 
 function enterCandidate(value) {
   if (!game || completed || selectedIndex < 0) return;
+  setStatus("");
   game = toggleNote(game, selectedIndex, value);
   save();
   renderBoard();
@@ -115,6 +118,7 @@ function enterCandidate(value) {
 
 function enterValue(value) {
   if (!game || completed || selectedIndex < 0) return;
+  setStatus("");
   game = toggleValue(game, selectedIndex, value);
   save();
   renderBoard();
@@ -125,14 +129,14 @@ async function openPuzzle(puzzleId, difficulty) {
   const saved = persistence.loadProgress(puzzleId);
   const statistic = persistence.loadStatistics()[puzzleId];
   game = restoreGame(saved) ?? createGameFromPuzzle(puzzle);
-  currentChallengeNumber = (statistic?.challengeCount ?? 0) + 1;
   currentBestSeconds = statistic?.bestSeconds ?? null;
   selectedIndex = game.puzzle.findIndex((value) => value === 0);
   completed = false;
-  elements.status.textContent = "";
+  setStatus("");
   elements.directoryView.hidden = true;
   elements.gameView.hidden = false;
   elements.gameMenu.hidden = false;
+  elements.puzzleTitle.hidden = false;
   save();
   renderBoard();
   elements.timer.textContent = formatDuration(elapsedSeconds(game));
@@ -290,6 +294,7 @@ function openDirectory() {
   save();
   elements.gameView.hidden = true;
   elements.gameMenu.hidden = true;
+  elements.puzzleTitle.hidden = true;
   elements.directoryView.hidden = false;
   if (game && returningFromGame) {
     selectedDifficulty = game.difficulty;
@@ -371,22 +376,32 @@ elements.numberPad.addEventListener("selectstart", (event) => event.preventDefau
 elements.numberPad.addEventListener("dragstart", (event) => event.preventDefault());
 elements.backToDirectory.addEventListener("click", openDirectory);
 elements.reset.addEventListener("click", () => {
-  if (!game) return;
+  if (
+    !game ||
+    !window.confirm("确认清空当前题的全部填写和候选，并重新计时吗？")
+  ) {
+    return;
+  }
   if (completed) {
     const statistic = persistence.loadStatistics()[game.puzzleId];
-    currentChallengeNumber = (statistic?.challengeCount ?? 0) + 1;
     currentBestSeconds = statistic?.bestSeconds ?? null;
   }
   game = resetGame(game);
   selectedIndex = game.puzzle.findIndex((value) => value === 0);
   completed = false;
-  elements.status.textContent = "已清空，可以重新开始。";
+  setStatus("已清空，可以重新开始。");
   elements.timer.textContent = "00:00";
   save();
   renderBoard();
 });
 elements.submit.addEventListener("click", () => {
-  if (!game || completed) return;
+  if (
+    !game ||
+    completed ||
+    !window.confirm("确认提交当前答案进行检查吗？")
+  ) {
+    return;
+  }
   const result = submitGame(game);
   game = result.game;
   if (result.correct) {
@@ -401,9 +416,9 @@ elements.submit.addEventListener("click", () => {
     currentBestSeconds =
       persistence.loadStatistics()[game.puzzleId]?.bestSeconds ?? elapsed;
     persistence.clearProgress(game.puzzleId);
-    elements.status.textContent = `回答正确 · 用时 ${formatDuration(elapsed)}`;
+    setStatus(`回答正确 · 用时 ${formatDuration(elapsed)}`);
   } else {
-    elements.status.textContent = "答案不正确，再检查一下吧。";
+    setStatus("答案不正确，再检查一下吧。");
     save();
   }
   renderBoard();

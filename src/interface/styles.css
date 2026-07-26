@@ -72,6 +72,25 @@ button {
   margin-bottom: 24px;
 }
 
+.title-group {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto auto;
+  column-gap: 14px;
+  align-items: baseline;
+}
+
+.title-group .eyebrow {
+  grid-column: 1 / -1;
+}
+
+.header-puzzle-title {
+  font-family: "Songti SC", "Noto Serif CJK SC", serif;
+  font-size: clamp(1rem, 2.6vw, 1.55rem);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .game-menu {
   display: flex;
   gap: 8px;
@@ -80,17 +99,11 @@ button {
 
 .game-menu button {
   padding: 8px 11px;
-  border: 1px solid #c8c4ba;
-  border-radius: 999px;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
   background: var(--paper);
   cursor: pointer;
   font-size: 0.82rem;
-}
-
-.game-menu button.primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: white;
 }
 
 h1,
@@ -333,18 +346,27 @@ h1 {
   min-width: 0;
 }
 
-.game-meta {
+.game-info-strip {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) repeat(4, auto);
-  gap: 12px;
-  min-height: 44px;
-  margin-bottom: 12px;
-  color: var(--muted);
-  align-items: center;
-  font-size: 0.82rem;
+  aspect-ratio: 9 / 1;
+  margin-bottom: 6px;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  background-color: var(--paper);
+  place-items: center;
 }
 
-.game-meta strong {
+.game-information {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.94rem;
+  white-space: nowrap;
+}
+
+.game-information strong {
   color: var(--ink);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -431,23 +453,33 @@ select {
 }
 
 .status {
-  min-height: 28px;
-  padding-top: 10px;
+  padding: 0 8px;
   color: var(--accent);
   text-align: center;
+  font-size: 0.86rem;
   font-weight: 600;
 }
 
 .controls {
   display: grid;
   margin-top: 12px;
-  gap: 14px;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
 }
 
 .number-pad {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 8px;
+  padding: 2px;
+  border-radius: 3px;
+  background: var(--ink);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 1px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -456,9 +488,11 @@ select {
 }
 
 .number-pad button {
-  aspect-ratio: 0.8;
-  border: 1px solid #d4d0c6;
-  border-radius: 8px;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
   background: var(--paper);
   cursor: pointer;
   font-size: 1.05rem;
@@ -471,6 +505,23 @@ select {
     background 120ms ease,
     color 120ms ease,
     transform 500ms linear;
+}
+
+.side-action {
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  padding: 6px;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  background: var(--paper);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.side-action.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
 }
 
 .number-pad button.pressing {
@@ -552,13 +603,17 @@ dialog::backdrop {
     font-size: 0.76rem;
   }
 
-  .game-meta {
-    gap: 7px;
-    font-size: 0.76rem;
+  .game-information {
+    gap: 10px;
+    font-size: 0.86rem;
   }
 
   .controls {
-    margin-top: 10px;
+    margin-top: 6px;
+  }
+
+  .control-grid {
+    gap: 5px;
   }
 
   .directory-heading {
@@ -582,13 +637,10 @@ dialog::backdrop {
   }
 
   .number-pad {
-    grid-template-columns: repeat(9, 1fr);
-    gap: 4px;
+    gap: 1px;
   }
 
   .number-pad button {
-    aspect-ratio: 0.82;
-    border-radius: 6px;
     font-size: 1rem;
   }
 }
@@ -607,9 +659,9 @@ dialog::backdrop {
     font-size: 1.75rem;
   }
 
-  .game-meta {
-    gap: 5px;
-    font-size: 0.69rem;
+  .game-information {
+    gap: 8px;
+    font-size: 0.82rem;
   }
 
   .game-menu {

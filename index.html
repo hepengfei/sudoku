@@ -10,13 +10,12 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
+        <div class="title-group">
           <p class="eyebrow">SUDOKU NOTEBOOK</p>
           <h1>数独本</h1>
+          <span class="header-puzzle-title" id="puzzle-title" hidden></span>
         </div>
         <nav class="game-menu" id="game-menu" aria-label="游戏菜单" hidden>
-          <button id="reset" type="button">清空重做</button>
-          <button class="primary" id="submit" type="button">提交</button>
           <button id="back-to-directory" type="button">返回题库</button>
         </nav>
       </header>
@@ -37,19 +36,23 @@
 
       <section class="game-layout" id="game-view" aria-label="数独游戏" hidden>
         <div class="board-panel">
-          <div class="game-meta">
-            <span id="puzzle-title"></span>
-            <span>用时 <strong id="timer">00:00</strong></span>
-            <span>判错 <strong id="mistakes">0</strong></span>
-            <span id="challenge-number">第 1 次</span>
-            <span>最佳 <strong id="best-time">—</strong></span>
+          <div class="game-info-strip">
+            <p class="game-information" id="game-information">
+              <span>当前用时 <strong id="timer">00:00</strong></span>
+              <span aria-hidden="true">·</span>
+              <span>最佳用时 <strong id="best-time">—</strong></span>
+            </p>
+            <p class="status" id="status" aria-live="polite" hidden></p>
           </div>
           <div class="board" id="board" role="grid" aria-label="九乘九数独棋盘"></div>
-          <p class="status" id="status" aria-live="polite"></p>
         </div>
 
         <aside class="controls" aria-label="输入面板">
-          <div class="number-pad" id="number-pad"></div>
+          <div class="control-grid">
+            <button class="side-action" id="reset" type="button">清空重做</button>
+            <div class="number-pad" id="number-pad"></div>
+            <button class="side-action primary" id="submit" type="button">提交检查</button>
+          </div>
         </aside>
       </section>
     </main>
