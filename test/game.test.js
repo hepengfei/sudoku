@@ -3,24 +3,22 @@ import assert from "node:assert/strict";
 import {
   createGame,
   elapsedSeconds,
-  eraseCell,
   restoreGame,
-  setValue,
   submitGame,
   toggleNote,
+  toggleValue,
 } from "../src/application/game.js";
 
 const fixedNow = () => 1_000_000;
 const fixedRandom = () => 0;
 
-test("给定数字不可修改或清除", () => {
+test("给定数字不可修改", () => {
   const game = createGame("easy", null, fixedNow, fixedRandom);
   const given = game.puzzle.findIndex(Boolean);
-  assert.equal(setValue(game, given, 9), game);
-  assert.equal(eraseCell(game, given), game);
+  assert.equal(toggleValue(game, given, 9), game);
 });
 
-test("数字和候选输入互斥，候选可以切换", () => {
+test("短按语义切换候选数字", () => {
   let game = createGame("easy", null, fixedNow, fixedRandom);
   const empty = game.puzzle.findIndex((value) => value === 0);
   game = toggleNote(game, empty, 3);
@@ -29,9 +27,19 @@ test("数字和候选输入互斥，候选可以切换", () => {
   assert.deepEqual(game.notes[empty], [3, 5]);
   game = toggleNote(game, empty, 3);
   assert.deepEqual(game.notes[empty], [5]);
-  game = setValue(game, empty, 8);
+});
+
+test("长按语义填写、替换或取消确定数字，并清除候选", () => {
+  let game = createGame("easy", null, fixedNow, fixedRandom);
+  const empty = game.puzzle.findIndex((value) => value === 0);
+  game = toggleNote(game, empty, 5);
+  game = toggleValue(game, empty, 8);
   assert.equal(game.board[empty], 8);
   assert.deepEqual(game.notes[empty], []);
+  game = toggleValue(game, empty, 3);
+  assert.equal(game.board[empty], 3);
+  game = toggleValue(game, empty, 3);
+  assert.equal(game.board[empty], 0);
 });
 
 test("恢复进度保留累计用时并从当前时间继续", () => {

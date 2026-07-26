@@ -43,8 +43,7 @@ button {
 .topbar,
 .game-meta,
 .dialog-head,
-.history-item,
-.mode-switch {
+.history-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -84,11 +83,8 @@ h1 {
 }
 
 .game-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 670px) minmax(210px, 270px);
-  gap: clamp(28px, 6vw, 72px);
-  align-items: center;
-  justify-content: center;
+  width: min(670px, 100%);
+  margin: 0 auto;
 }
 
 .board-panel {
@@ -194,55 +190,48 @@ select {
 
 .controls {
   display: grid;
+  margin-top: 12px;
   gap: 14px;
-}
-
-.mode-switch {
-  padding: 4px;
-  border: 1px solid #d4d0c6;
-  border-radius: 999px;
-  background: rgb(255 253 247 / 70%);
-}
-
-.mode {
-  width: 50%;
-  padding: 9px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.mode.active {
-  background: var(--ink);
-  color: white;
 }
 
 .number-pad {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(9, 1fr);
   gap: 8px;
 }
 
 .number-pad button {
-  aspect-ratio: 1.15;
+  aspect-ratio: 0.8;
   border: 1px solid #d4d0c6;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--paper);
   cursor: pointer;
-  font-size: 1.25rem;
+  font-size: 1.05rem;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    transform 500ms linear;
 }
 
-.erase-button,
+.number-pad button.pressing {
+  background: #e9c2b3;
+  color: var(--accent);
+  transform: scale(0.94);
+}
+
+.input-help {
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.78rem;
+}
+
 .submit-button {
   min-height: 46px;
   border-radius: 8px;
   cursor: pointer;
-}
-
-.erase-button {
-  border: 1px solid #c8c4ba;
-  background: transparent;
 }
 
 .submit-button {
@@ -322,19 +311,8 @@ dialog::backdrop {
     margin-bottom: 14px;
   }
 
-  .game-layout {
-    display: block;
-  }
-
   .controls {
     margin-top: 10px;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .mode-switch,
-  .number-pad,
-  .mistakes {
-    grid-column: 1 / -1;
   }
 
   .number-pad {

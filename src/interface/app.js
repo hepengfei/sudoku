@@ -1,15 +1,15 @@
 import {
   createGame,
   elapsedSeconds,
-  eraseCell,
   pauseGame,
   restoreGame,
-  setValue,
   submitGame,
   toggleNote,
+  toggleValue,
 } from "../application/game.js";
 import { DIFFICULTY_LABELS } from "../domain/puzzles.js";
 import { createStorage } from "../infrastructure/storage.js";
+import { createPressController } from "./press-controller.js";
 
 const elements = {
   board: document.querySelector("#board"),
@@ -20,19 +20,17 @@ const elements = {
   numberPad: document.querySelector("#number-pad"),
   newGame: document.querySelector("#new-game"),
   submit: document.querySelector("#submit"),
-  erase: document.querySelector("#erase"),
   historyButton: document.querySelector("#history-button"),
   historyDialog: document.querySelector("#history-dialog"),
   historyList: document.querySelector("#history-list"),
   closeHistory: document.querySelector("#close-history"),
-  modes: [...document.querySelectorAll(".mode")],
 };
 
 const persistence = createStorage();
 let game = restoreGame(persistence.loadActive()) ?? createGame();
 let selectedIndex = game.puzzle.findIndex((value) => value === 0);
-let inputMode = "value";
 let completed = false;
+const LONG_PRESS_MILLISECONDS = 500;
 
 function formatDuration(seconds) {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -80,12 +78,16 @@ function renderBoard() {
   elements.mistakes.textContent = game.mistakes;
 }
 
-function enterNumber(value) {
+function enterCandidate(value) {
   if (completed || selectedIndex < 0) return;
-  game =
-    inputMode === "notes"
-      ? toggleNote(game, selectedIndex, value)
-      : setValue(game, selectedIndex, value);
+  game = toggleNote(game, selectedIndex, value);
+  save();
+  renderBoard();
+}
+
+function enterValue(value) {
+  if (completed || selectedIndex < 0) return;
+  game = toggleValue(game, selectedIndex, value);
   save();
   renderBoard();
 }
@@ -121,25 +123,42 @@ function renderHistory() {
 
 for (let value = 1; value <= 9; value += 1) {
   const button = document.createElement("button");
+  const pressController = createPressController({
+    delay: LONG_PRESS_MILLISECONDS,
+    onShortPress: () => enterCandidate(value),
+    onLongPress: () => {
+      button.classList.remove("pressing");
+      enterValue(value);
+    },
+  });
+
   button.type = "button";
   button.textContent = value;
-  button.addEventListener("click", () => enterNumber(value));
+  button.setAttribute("aria-label", `${value}，短按候选，长按确定`);
+  button.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0 || !pressController.start(event.pointerId)) return;
+    event.preventDefault();
+    button.classList.add("pressing");
+    button.setPointerCapture(event.pointerId);
+  });
+  button.addEventListener("pointerup", (event) => {
+    const result = pressController.end(event.pointerId);
+    if (result === null) return;
+    event.preventDefault();
+    button.classList.remove("pressing");
+    if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
+  });
+  button.addEventListener("pointercancel", (event) => {
+    if (!pressController.cancel(event.pointerId)) return;
+    button.classList.remove("pressing");
+  });
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
+  button.addEventListener("click", (event) => {
+    if (event.detail === 0) enterCandidate(value);
+  });
   elements.numberPad.append(button);
 }
 
-elements.modes.forEach((button) => {
-  button.addEventListener("click", () => {
-    inputMode = button.dataset.mode;
-    elements.modes.forEach((mode) => mode.classList.toggle("active", mode === button));
-  });
-});
-
-elements.erase.addEventListener("click", () => {
-  if (completed || selectedIndex < 0) return;
-  game = eraseCell(game, selectedIndex);
-  save();
-  renderBoard();
-});
 elements.newGame.addEventListener("click", () => startNew());
 elements.difficulty.addEventListener("change", () => startNew(elements.difficulty.value));
 elements.submit.addEventListener("click", () => {
@@ -171,12 +190,7 @@ elements.historyButton.addEventListener("click", () => {
 elements.closeHistory.addEventListener("click", () => elements.historyDialog.close());
 
 document.addEventListener("keydown", (event) => {
-  if (/^[1-9]$/.test(event.key)) enterNumber(Number(event.key));
-  if (event.key === "Backspace" || event.key === "Delete") {
-    game = eraseCell(game, selectedIndex);
-    save();
-    renderBoard();
-  }
+  if (/^[1-9]$/.test(event.key)) enterCandidate(Number(event.key));
 });
 window.addEventListener("pagehide", save);
 

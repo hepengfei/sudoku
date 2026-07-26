@@ -47,10 +47,10 @@ export function pauseGame(game, now = Date.now) {
   return { ...game, elapsedBeforeResume: elapsedSeconds(game, now), startedAt: now() };
 }
 
-export function setValue(game, index, value) {
+export function toggleValue(game, index, value) {
   if (game.puzzle[index] !== 0) return game;
   const board = [...game.board];
-  board[index] = value;
+  board[index] = board[index] === value ? 0 : value;
   const notes = game.notes.map((entry, noteIndex) => (noteIndex === index ? [] : [...entry]));
   return { ...game, board, notes };
 }
@@ -62,15 +62,6 @@ export function toggleNote(game, index, value) {
     ? notes[index].filter((candidate) => candidate !== value)
     : [...notes[index], value].sort();
   return { ...game, notes };
-}
-
-export function eraseCell(game, index) {
-  if (game.puzzle[index] !== 0) return game;
-  const board = [...game.board];
-  const notes = game.notes.map((entry) => [...entry]);
-  board[index] = 0;
-  notes[index] = [];
-  return { ...game, board, notes };
 }
 
 export function submitGame(game) {
