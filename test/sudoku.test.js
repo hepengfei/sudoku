@@ -8,7 +8,12 @@ import {
   serializeBoard,
   solveBoard,
 } from "../src/domain/sudoku.js";
-import { allPuzzles } from "../src/domain/puzzles.js";
+import {
+  allPuzzles,
+  DIFFICULTY_LABELS,
+  PUZZLE_SOURCE,
+  puzzlesForDifficulty,
+} from "../src/domain/puzzles.js";
 
 const solved = parseBoard(
   "534678912672195348198342567859761423426853791713924856961537284287419635345286179",
@@ -75,12 +80,45 @@ test("求解器区分无效、无解、唯一解和多解", () => {
   assert.equal(solveBoard(Array(81).fill(0)).status, "multiple");
 });
 
-test("内置题目格式正确、答案匹配且解唯一", () => {
-  for (const entry of allPuzzles()) {
-    const puzzle = parseBoard(entry.puzzle);
-    const solution = parseBoard(entry.solution);
-    const result = solveBoard(puzzle);
+test("内置题目格式正确、答案匹配且解唯一", async () => {
+  for (const entry of await allPuzzles()) {
+    const result = solveBoard(entry.puzzle);
     assert.equal(result.status, "unique", entry.id);
-    assert.deepEqual(result.solutions[0], solution, entry.id);
+    assert.deepEqual(result.solutions[0], entry.solution, entry.id);
   }
+});
+
+test("四个难度各包含 1000 道不重复题目", async () => {
+  assert.deepEqual(DIFFICULTY_LABELS, {
+    easy: "简单",
+    medium: "中等",
+    hard: "困难",
+    diabolical: "地狱",
+  });
+  const puzzles = await allPuzzles();
+  assert.equal(puzzles.length, 4000);
+  assert.equal(new Set(puzzles.map((entry) => entry.id)).size, 4000);
+  assert.equal(new Set(puzzles.map((entry) => serializeBoard(entry.puzzle))).size, 4000);
+  for (const difficulty of Object.keys(DIFFICULTY_LABELS)) {
+    assert.equal((await puzzlesForDifficulty(difficulty)).length, 1000);
+  }
+});
+
+test("难度评分与上游四档映射一致", async () => {
+  assert.equal(PUZZLE_SOURCE.sampleSize, 1000);
+  assert.equal(PUZZLE_SOURCE.seed, "sudoku-book-v1-2026-07-26");
+  assert.ok((await puzzlesForDifficulty("easy")).every((entry) => entry.rating < 1.5));
+  assert.ok(
+    (await puzzlesForDifficulty("medium")).every(
+      (entry) => entry.rating >= 1.5 && entry.rating < 2.5,
+    ),
+  );
+  assert.ok(
+    (await puzzlesForDifficulty("hard")).every(
+      (entry) => entry.rating >= 2.5 && entry.rating < 5,
+    ),
+  );
+  assert.ok(
+    (await puzzlesForDifficulty("diabolical")).every((entry) => entry.rating >= 5),
+  );
 });

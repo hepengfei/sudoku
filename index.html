@@ -14,22 +14,35 @@
           <p class="eyebrow">SUDOKU NOTEBOOK</p>
           <h1>数独本</h1>
         </div>
-        <button class="text-button" id="history-button" type="button">历史</button>
+        <nav class="game-menu" id="game-menu" aria-label="游戏菜单" hidden>
+          <button id="reset" type="button">清空重做</button>
+          <button class="primary" id="submit" type="button">提交</button>
+          <button id="back-to-directory" type="button">返回题库</button>
+        </nav>
       </header>
 
-      <section class="game-layout" aria-label="数独游戏">
+      <section class="directory-view" id="directory-view" aria-label="题库">
+        <div class="directory-heading">
+          <div>
+            <p class="eyebrow">PUZZLE INDEX</p>
+            <h2>题库</h2>
+          </div>
+          <p>一本留在这台设备上的数独书</p>
+        </div>
+        <div class="difficulty-tabs" id="difficulty-tabs" role="tablist" aria-label="题目难度"></div>
+        <div class="directory-summary" id="directory-summary"></div>
+        <div class="puzzle-list" id="puzzle-list"></div>
+        <nav class="pagination" id="pagination" aria-label="题目分页"></nav>
+      </section>
+
+      <section class="game-layout" id="game-view" aria-label="数独游戏" hidden>
         <div class="board-panel">
           <div class="game-meta">
-            <label>
-              难度
-              <select id="difficulty">
-                <option value="easy">简单</option>
-                <option value="medium">中等</option>
-                <option value="hard">困难</option>
-              </select>
-            </label>
-            <span id="timer" aria-label="用时">00:00</span>
-            <button class="text-button" id="new-game" type="button">换一题</button>
+            <span id="puzzle-title"></span>
+            <span>用时 <strong id="timer">00:00</strong></span>
+            <span>判错 <strong id="mistakes">0</strong></span>
+            <span id="challenge-number">第 1 次</span>
+            <span>最佳 <strong id="best-time">—</strong></span>
           </div>
           <div class="board" id="board" role="grid" aria-label="九乘九数独棋盘"></div>
           <p class="status" id="status" aria-live="polite"></p>
@@ -37,23 +50,9 @@
 
         <aside class="controls" aria-label="输入面板">
           <div class="number-pad" id="number-pad"></div>
-          <p class="input-help">短按标记候选 · 长按填写数字</p>
-          <button class="submit-button" id="submit" type="button">提交答案</button>
-          <p class="mistakes">提交判错 <strong id="mistakes">0</strong> 次</p>
         </aside>
       </section>
     </main>
-
-    <dialog id="history-dialog">
-      <div class="dialog-head">
-        <div>
-          <p class="eyebrow">LOCAL RECORDS</p>
-          <h2>完成历史</h2>
-        </div>
-        <button class="close-button" id="close-history" type="button" aria-label="关闭">×</button>
-      </div>
-      <div id="history-list"></div>
-    </dialog>
 
     <script type="module" src="/src/interface/app.js"></script>
   </body>

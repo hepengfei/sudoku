@@ -21,8 +21,21 @@ createServer((request, response) => {
     return;
   }
   try {
-    if (!statSync(filePath).isFile()) throw new Error("Not a file");
-    response.writeHead(200, { "Content-Type": types[extname(filePath)] ?? "application/octet-stream" });
+    const stats = statSync(filePath);
+    if (!stats.isFile()) throw new Error("Not a file");
+    const etag = `W/"${stats.size}-${Math.trunc(stats.mtimeMs)}"`;
+    const headers = {
+      "Content-Type": types[extname(filePath)] ?? "application/octet-stream",
+      ETag: etag,
+    };
+    if (relativePath.startsWith("src/domain/puzzle-data/")) {
+      headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400";
+    }
+    if (request.headers["if-none-match"] === etag) {
+      response.writeHead(304, headers).end();
+      return;
+    }
+    response.writeHead(200, headers);
     createReadStream(filePath).pipe(response);
   } catch {
     response.writeHead(404).end("Not found");

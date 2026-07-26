@@ -5,12 +5,22 @@ function emptyNotes() {
   return Array.from({ length: CELL_COUNT }, () => []);
 }
 
-export function createGame(difficulty = "easy", excludedId = null, now = Date.now, random) {
-  const selected = getPuzzle(difficulty, excludedId, random);
+export async function createGame(
+  difficulty = "easy",
+  excludedId = null,
+  now = Date.now,
+  random,
+) {
+  const selected = await getPuzzle(difficulty, excludedId, random);
+  return createGameFromPuzzle(selected, now);
+}
+
+export function createGameFromPuzzle(selected, now = Date.now) {
   return {
-    version: 1,
+    version: 2,
     puzzleId: selected.id,
-    difficulty,
+    difficulty: selected.difficulty,
+    puzzleNumber: selected.number ?? 1,
     puzzle: selected.puzzle,
     solution: selected.solution,
     board: [...selected.puzzle],
@@ -24,7 +34,7 @@ export function createGame(difficulty = "easy", excludedId = null, now = Date.no
 export function restoreGame(saved, now = Date.now) {
   if (
     !saved ||
-    saved.version !== 1 ||
+    ![1, 2].includes(saved.version) ||
     !Array.isArray(saved.puzzle) ||
     !Array.isArray(saved.solution) ||
     !Array.isArray(saved.board) ||
@@ -34,6 +44,8 @@ export function restoreGame(saved, now = Date.now) {
   }
   return {
     ...saved,
+    version: 2,
+    puzzleNumber: saved.puzzleNumber ?? 1,
     notes: Array.isArray(saved.notes) && saved.notes.length === CELL_COUNT ? saved.notes : emptyNotes(),
     startedAt: now(),
   };
@@ -45,6 +57,17 @@ export function elapsedSeconds(game, now = Date.now) {
 
 export function pauseGame(game, now = Date.now) {
   return { ...game, elapsedBeforeResume: elapsedSeconds(game, now), startedAt: now() };
+}
+
+export function resetGame(game, now = Date.now) {
+  return {
+    ...game,
+    board: [...game.puzzle],
+    notes: emptyNotes(),
+    startedAt: now(),
+    elapsedBeforeResume: 0,
+    mistakes: 0,
+  };
 }
 
 export function toggleValue(game, index, value) {

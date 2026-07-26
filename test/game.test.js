@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   createGame,
   elapsedSeconds,
+  resetGame,
   restoreGame,
   submitGame,
   toggleNote,
@@ -12,14 +13,14 @@ import {
 const fixedNow = () => 1_000_000;
 const fixedRandom = () => 0;
 
-test("给定数字不可修改", () => {
-  const game = createGame("easy", null, fixedNow, fixedRandom);
+test("给定数字不可修改", async () => {
+  const game = await createGame("easy", null, fixedNow, fixedRandom);
   const given = game.puzzle.findIndex(Boolean);
   assert.equal(toggleValue(game, given, 9), game);
 });
 
-test("短按语义切换候选数字", () => {
-  let game = createGame("easy", null, fixedNow, fixedRandom);
+test("短按语义切换候选数字", async () => {
+  let game = await createGame("easy", null, fixedNow, fixedRandom);
   const empty = game.puzzle.findIndex((value) => value === 0);
   game = toggleNote(game, empty, 3);
   assert.deepEqual(game.notes[empty], [3]);
@@ -29,8 +30,8 @@ test("短按语义切换候选数字", () => {
   assert.deepEqual(game.notes[empty], [5]);
 });
 
-test("长按语义填写、替换或取消确定数字，并清除候选", () => {
-  let game = createGame("easy", null, fixedNow, fixedRandom);
+test("长按语义填写、替换或取消确定数字，并清除候选", async () => {
+  let game = await createGame("easy", null, fixedNow, fixedRandom);
   const empty = game.puzzle.findIndex((value) => value === 0);
   game = toggleNote(game, empty, 5);
   game = toggleValue(game, empty, 8);
@@ -42,14 +43,34 @@ test("长按语义填写、替换或取消确定数字，并清除候选", () =>
   assert.equal(game.board[empty], 0);
 });
 
-test("恢复进度保留累计用时并从当前时间继续", () => {
-  const game = createGame("easy", null, fixedNow, fixedRandom);
+test("恢复进度保留累计用时并从当前时间继续", async () => {
+  const game = await createGame("easy", null, fixedNow, fixedRandom);
   const restored = restoreGame({ ...game, elapsedBeforeResume: 25 }, () => 2_000_000);
   assert.equal(elapsedSeconds(restored, () => 2_010_000), 35);
 });
 
-test("提交仅返回整体结果，错误提交累计次数", () => {
-  let game = createGame("easy", null, fixedNow, fixedRandom);
+test("清空重做会保留给定数字并重置填写、候选、用时和判错次数", async () => {
+  let game = await createGame("easy", null, fixedNow, fixedRandom);
+  const firstEmpty = game.puzzle.findIndex((value) => value === 0);
+  const secondEmpty = game.puzzle.findIndex(
+    (value, index) => value === 0 && index !== firstEmpty,
+  );
+  game = toggleValue(game, firstEmpty, 8);
+  game = toggleNote(game, secondEmpty, 3);
+  game = { ...game, elapsedBeforeResume: 25, mistakes: 2 };
+
+  const reset = resetGame(game, () => 2_000_000);
+
+  assert.deepEqual(reset.board, reset.puzzle);
+  assert.ok(reset.notes.every((notes) => notes.length === 0));
+  assert.equal(reset.elapsedBeforeResume, 0);
+  assert.equal(reset.startedAt, 2_000_000);
+  assert.equal(reset.mistakes, 0);
+  assert.equal(reset.puzzleId, game.puzzleId);
+});
+
+test("提交仅返回整体结果，错误提交累计次数", async () => {
+  let game = await createGame("easy", null, fixedNow, fixedRandom);
   const wrong = submitGame(game);
   assert.deepEqual(Object.keys(wrong).sort(), ["correct", "game"]);
   assert.equal(wrong.correct, false);
