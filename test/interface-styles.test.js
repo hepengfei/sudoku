@@ -2,6 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+test("页面资源使用兼容 GitHub Pages 项目路径的相对地址", () => {
+  const markup = readFileSync(
+    new URL("../index.html", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(markup, /href="\.\/src\/interface\/styles\.css"/);
+  assert.match(markup, /src="\.\/src\/interface\/app\.js"/);
+  assert.doesNotMatch(markup, /(?:href|src)="\/src\//);
+});
+
 test("题库标题与应用名称共用顶部标题行", () => {
   const markup = readFileSync(
     new URL("../index.html", import.meta.url),
