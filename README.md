@@ -72,7 +72,7 @@ HOST=0.0.0.0 npm run dev
 
 网站通过 GitHub Pages 托管，访问地址：
 
-<https://hepengfei.github.io/sudoku/>
+<https://hackerful.cn/sudoku/>
 
 推送到 `main` 分支后，GitHub Actions 会先运行仓库的检查和测试，再自动发布
 `index.html` 与 `src/` 中的静态资源。也可以在 GitHub 仓库的 Actions 页面中手动运行
