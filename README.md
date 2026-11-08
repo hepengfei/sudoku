@@ -37,11 +37,11 @@
 ### 题库来源
 
 内置 5000 道题来自公有领域的
-[Sudoku Exchange Puzzle Bank](https://github.com/grantm/sudoku-exchange-puzzle-bank)，
-将 Easy 中给定数不少于 40 的题目拆为“入门”，其余对应 Easy、Medium、Hard、
-Diabolical 四档；每档按给定数降序、来源哈希升序选择 1000 题。导入时由
-本项目求解器重新验证唯一解并生成答案。完整来源、上游版本、文件校验和、选择规则
-和复现命令见
+[Sudoku Exchange Puzzle Bank](https://github.com/grantm/sudoku-exchange-puzzle-bank)：
+入门取自 Easy 中给定数不少于 40 的题目，简单取自 Easy 中其余题目，中等、困难、
+地狱则分别取自 Medium、Hard、Diabolical；每档按给定数降序、来源哈希升序
+选择 1000 题。导入时由本项目求解器重新验证唯一解并生成答案。完整来源、上游版本、
+文件校验和、选择规则和复现命令见
 [`docs/knowledge/sudoku-exchange-import.md`](docs/knowledge/sudoku-exchange-import.md)。
 五档题目分别存放为静态模块，页面按当前难度延迟加载，浏览器会缓存已经打开过的
 题库文件。
