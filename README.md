@@ -95,3 +95,5 @@ HOST=0.0.0.0 npm run dev
 E2E smoke test by hepengfei-superagent
 
 B2 base line
+
+B2 comment handled
