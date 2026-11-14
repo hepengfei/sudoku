@@ -92,3 +92,4 @@ HOST=0.0.0.0 npm run dev
 ## License
 
 暂未指定开源许可证。
+E2E smoke test by hepengfei-superagent
