@@ -99,3 +99,5 @@ B2 base line
 B2 comment handled
 
 B8 sudoku issue 1
+
+C1 sudoku
