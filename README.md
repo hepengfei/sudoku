@@ -112,3 +112,4 @@ C11b source MR baseline
 
 C11 source mr
 F3 A
+F2 restart
