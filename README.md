@@ -103,3 +103,5 @@ B8 sudoku issue 1
 C1 sudoku
 
 C13 followup
+
+C9 partial
